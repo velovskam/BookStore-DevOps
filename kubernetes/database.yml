@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: book-store-project-postgres-config
+  namespace: book-store-ns
+data:
+  POSTGRES_DB: 'bookstore'
+  POSTGRES_USER: 'postgres'
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: book-store-project-postgres-secret
+  namespace: book-store-ns
+type: Opaque
+data:
+  POSTGRES_USER: cG9zdGdyZXM=
+  POSTGRES_PASSWORD: bW9uaWthMTIz
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: book-store-project-postgres-pvc
+  namespace: book-store-ns
+  labels:
+    app: postgres
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: book-store-project-postgres-statefulset
+  namespace: book-store-ns
+spec:
+  serviceName: book-store-project-postgres-service
+  selector:
+    matchLabels:
+      app: postgres
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: postgres
+        namespace: book-store-ns
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:latest
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: book-store-project-postgres-config
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: book-store-project-postgres-config
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: book-store-project-postgres-secret
+                  key: POSTGRES_PASSWORD
+          volumeMounts:
+            - name: book-store-project-postgres-data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: book-store-project-postgres-data
+          persistentVolumeClaim:
+            claimName: book-store-project-postgres-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: book-store-project-postgres-service
+  namespace: book-store-ns
+spec:
+  selector:
+    app: postgres
+  ports:
+    - protocol: TCP
+      port: 5432
+  type: LoadBalancer

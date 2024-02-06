@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: book-store-project-service
+  namespace: book-store-ns
+spec:
+  selector:
+    app: book-store-project
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
